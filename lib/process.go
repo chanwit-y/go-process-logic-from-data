@@ -35,8 +35,9 @@ type AssignType struct {
 type IfType struct{}
 
 type LoopType struct {
-	Key  string
-	Flow []Flow
+	Key          string
+	IsFromString bool // set true when loop 2 step up
+	Flow         []Flow
 }
 
 type PrintfType struct {
@@ -62,6 +63,10 @@ func ForEachObjProcess(data []map[string]any, flow []Flow, variables map[string]
 		for key, element := range d {
 			variables[string(key)] = element
 		}
+		for key, element := range variables {
+			fmt.Printf("key: %+v \n", key)
+			fmt.Printf("element: %+v \n", element)
+		}
 		variables = RunProcess(flow, variables)
 	}
 
@@ -80,7 +85,14 @@ func RunProcess(flow []Flow, variables map[string]any) map[string]any {
 		case 3:
 			{
 				arr := []map[string]any{}
-				json.Unmarshal([]byte(variables[f.Loop.Key].(string)), &arr)
+				if f.Loop.IsFromString {
+					json.Unmarshal([]byte(variables[f.Loop.Key].(string)), &arr)
+				} else {
+
+					j, _ := json.Marshal(variables[f.Loop.Key])
+					jsonStr := string(j)
+					json.Unmarshal([]byte(jsonStr), &arr)
+				}
 				variables = ForEachObjProcess(arr, f.Loop.Flow, variables)
 			}
 		case 6:
@@ -98,6 +110,16 @@ func Process() {
 		{
 			"Code": "1",
 			"Name": "test 1",
+			"Json2": []map[string]any{
+				{
+					"A": "data a 1",
+					"B": "data b 1",
+				},
+				{
+					"A": "data a 2",
+					"B": "data b 2",
+				},
+			},
 		},
 		{
 			"Code": "2",
@@ -128,7 +150,8 @@ func Process() {
 		{
 			Type: 3,
 			Loop: LoopType{
-				Key: "json1",
+				Key:          "json1",
+				IsFromString: true,
 				Flow: []Flow{
 					{
 						Type: 6,
@@ -142,6 +165,22 @@ func Process() {
 						Printf: PrintfType{
 							Message: "Name: %v \n",
 							Key:     "Name",
+						},
+					},
+					{
+						Type: 3,
+						Loop: LoopType{
+							Key:          "Json2",
+							IsFromString: false,
+							Flow: []Flow{
+								{
+									Type: 6,
+									Printf: PrintfType{
+										Message: "A: %v \n",
+										Key:     "A",
+									},
+								},
+							},
 						},
 					},
 				},
